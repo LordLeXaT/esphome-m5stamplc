@@ -1,15 +1,13 @@
 esphome:
   name: m5stamplc
   friendly_name: 'M5Stack STAMPLC'
-  min_version: 2025.7.0
+  min_version: 2025.8.0
   on_boot:
-    - then:
-        rx8130.read_time:
     - priority: 1000
       then:
         - lambda: |-
-            pinMode(03, OUTPUT);
-            digitalWrite(03, HIGH);        
+            gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_3, 1);   
     - priority: 0
       then:
        component.update: vdu
@@ -24,7 +22,7 @@ esp32:
   flash_size: 8MB
   variant: ESP32S3
   framework:
-    type: arduino
+    type: esp-idf
 
 # I found OTA updating failed unless safe_mode was disabled
 safe_mode:
@@ -64,7 +62,7 @@ wifi:
 # to provision wifi credentials to the device via WiFi AP.
 captive_portal:
 
-# To have a HA style local web page for device monitoring
+# To have a HA style local web page to monitor the device
 web_server:
   port: 80
   version: 3
@@ -73,19 +71,11 @@ web_server:
 
 # Time
 time:
-  - platform: rx8130
-    id: rx8130_time
-    update_interval: 30 min
-    on_time_sync:
-      then:
-        - component.update: vdu
   - platform: sntp
     id: sntp_time
     timezone: Europe/London
     on_time_sync:
       then:
-        - rx8130.write_time:
-            id: rx8130_time
         - component.update: vdu
     on_time:
       - cron: '0 * * * * *'
@@ -95,7 +85,7 @@ time:
 i2c:
   sda: GPIO13
   scl: GPIO15
-  scan: true
+  scan: false
 
 spi:
   clk_pin: GPIO7
@@ -104,7 +94,9 @@ spi:
 
 # RS485 pin config
 uart:
-  tx_pin: GPIO0
+  tx_pin:
+    number: GPIO0
+    ignore_strapping_warning: true
   rx_pin: GPIO39
   baud_rate: 9600
   parity: EVEN
@@ -454,8 +446,8 @@ display:
   update_interval: never
   #show_test_card: true
   lambda: |-
-    if (id(rx8130_time).now().is_valid()) {
-      it.strftime(5, 0, id(font1), Color(orange), "%a %d %b %Y  %H:%M  %Z", id(rx8130_time).now()); 
+    if (id(sntp_time).now().is_valid()) {
+      it.strftime(5, 0, id(font1), Color(orange), "%a %d %b %Y  %H:%M  %Z", id(sntp_time).now()); 
     }
     it.line(5, 19, 230, 19, id(grey));
     it.print(5, 28, id(font1), id(orange), "Inputs 1-8");

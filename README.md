@@ -13,6 +13,70 @@ https://docs.m5stack.com/en/core/StamPLC
 
 The example config requires wifi to be configured. Don't forget to set the timezone for your location under the time section of the config. The LCD screen displays relay and input status along with date/time and wifi connection status. If the Home Assistant API is enabled then all the relays, inputs, buttons and diagnostic controls show up in the Home Assistant UI.
 
+## Arduino Vs. ESP-IDF Compilation
+
+An alternative [config-esp-idf.yaml](config-esp-idf.yaml) is provided demonstrating how to compile the project using the esp-idf framework. Using the Arduino framework will result in faster compilation time but larger RAM and Flash usage. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
+
+Arduino:
+
+```yaml
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 8MB
+  variant: ESP32S3
+  framework:
+    type: arduino
+
+esphome:
+  name: m5stamplc
+  friendly_name: 'M5Stack STAMPLC'
+  min_version: 2025.7.0
+  on_boot:
+    - priority: 1000
+      then:
+        - lambda: |-
+            pinMode(03, OUTPUT);
+            digitalWrite(03, HIGH);        
+    - priority: 0
+      then:
+       component.update: vdu
+
+i2c:
+  sda: GPIO13
+  scl: GPIO15
+  scan: true
+```
+
+ESP-IDF:
+
+```yaml
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 8MB
+  variant: ESP32S3
+  framework:
+    type: esp-idf
+
+esphome:
+  name: m5stamplc
+  friendly_name: 'M5Stack STAMPLC'
+  min_version: 2025.8.0
+  on_boot:
+    - priority: 1000
+      then:
+        - lambda: |-
+            gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_3, 1);   
+    - priority: 0
+      then:
+       component.update: vdu
+
+i2c:
+  sda: GPIO13
+  scl: GPIO15
+  scan: false
+```
+
 ## Home Assistant UI / Local Web Inteface (http://m5stamplc.local)
 
 **Components**  
@@ -55,35 +119,37 @@ Please post your example configs in the discussion area - especially any LVGL/Di
 
 TODO: One single M5StamPLC component to abstract away some of the configuration complexities and to bring all the dependencies together. Modbus RS485 support is also planned.
 
-NB: The controller uses GPIO03 drain pin as RESET. It needs to be pulled HIGH during boot for the GPIO Expander to initialise correctly:
+NB: The controller uses GPIO03 strapping pin as RESET. It needs to be pulled HIGH during boot for the GPIO Expander to initialise correctly:
+
+Arduino Framework:
 
 ```yaml
-  on_boot:
-    - priority: 1000
+on_boot:
+  - priority: 1000
       then:
         - lambda: |-
             pinMode(03, OUTPUT);
             digitalWrite(03, HIGH);
 ```
 
-
-## Example Configuration YAML:
+ESP-IDF Framework:
 
 ```yaml
-substitutions:
-  name: m5stamplc
-  friendly_name: 'M5Stack STAMPLC'
+on_boot:
+  - priority: 1000
+      then:
+        - lambda: |-
+            gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
+            gpio_set_level(GPIO_NUM_3, 1);   
+```
 
+## Example Configuration YAML (Arduino Framework):
+
+```yaml
 esphome:
-  name: ${name}
-  friendly_name: ${friendly_name}
+  name:  m5stamplc
+  friendly_name: 'M5Stack STAMPLC'
   min_version: 2025.7.0
-  platformio_options:
-    build_flags:
-      - -DESP32S3
-      - -DCORE_DEBUG_LEVEL=5
-      - -DARDUINO_USB_CDC_ON_BOOT=1
-      - -DARDUINO_USB_MODE=1
   on_boot:
     - then:
         rx8130.read_time:
@@ -96,7 +162,7 @@ esphome:
       then:
        component.update: vdu
 
-# Import custom components...
+# Import external components...
 external_components:
   - source: github://beormund/esphome-m5stamplc@main
     components: [aw9523, lm75b, rx8130]
@@ -123,9 +189,6 @@ logger:
 # Enable Home Assistant API
 api:
 
-# Allow provisioning Wi-Fi via serial
-improv_serial:
-
 wifi:
   id: wifi_1
   ssid: !secret wifi_ssid
@@ -149,7 +212,7 @@ wifi:
 # to provision wifi credentials to the device via WiFi AP.
 captive_portal:
 
-# To have a "next url" for improv serial
+# To have a HA style local web page to manage the device
 web_server:
   port: 80
   version: 3
