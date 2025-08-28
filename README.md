@@ -15,7 +15,7 @@ The example config requires wifi to be configured. Don't forget to set the timez
 
 ## Arduino Vs. ESP-IDF Compilation
 
-An alternative [config-esp-idf.yaml](config-esp-idf.yaml) is provided demonstrating how to compile the project using the esp-idf framework. Using the Arduino framework will result in faster compilation time but larger RAM and Flash usage. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
+An alternative [config-esp-idf.yaml](config-esp-idf.yaml) is provided demonstrating how to compile the project using the esp-idf framework. Using the Arduino framework will result in faster compilation time but larger RAM and Flash size. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
 
 Arduino:
 
@@ -600,10 +600,14 @@ display:
   cs_pin: GPIO12
   invert_colors: true
   update_interval: never
-  #show_test_card: true
   lambda: |-
     if (id(rx8130_time).now().is_valid()) {
       it.strftime(5, 0, id(font1), Color(orange), "%a %d %b %Y  %H:%M  %Z", id(rx8130_time).now()); 
+    }
+    if (id(wifi_1).is_connected()) {
+      it.print(210, 0, id(wifi_icons), id(green), "\uef10");
+    } else {
+      it.print(210, 0, id(wifi_icons), id(red), "\uef13");
     }
     it.line(5, 19, 230, 19, id(grey));
     it.print(5, 28, id(font1), id(orange), "Inputs 1-8");
@@ -620,10 +624,16 @@ display:
     it.filled_rectangle(34, 99, 25, 25, id(r2).state ? id(red) : id(grey));
     it.filled_rectangle(63, 99, 25, 25, id(r3).state ? id(red) : id(grey));
     it.filled_rectangle(92, 99, 25, 25, id(r4).state ? id(red) : id(grey));
-    it.rectangle(150, 99, 81, 25, id(blue));
-    it.print(175, 104, id(font1), id(wifi_1).is_connected() ? id(green) : id(grey), "WiFi");
+
 font:
-  file: "gfonts://Roboto"
-  id: font1
-  size: 15
+  - file: "gfonts://Roboto"
+    id: font1
+    size: 15
+  - file: "gfonts://Material+Symbols+Outlined"
+    id: wifi_icons
+    size: 18
+    glyphs: [
+      "\uef10", # wifi
+      "\uef13", # no wifi
+    ]  
 ```

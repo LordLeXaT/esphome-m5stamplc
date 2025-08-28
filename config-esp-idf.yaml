@@ -449,6 +449,11 @@ display:
     if (id(sntp_time).now().is_valid()) {
       it.strftime(5, 0, id(font1), Color(orange), "%a %d %b %Y  %H:%M  %Z", id(sntp_time).now()); 
     }
+    if (id(wifi_1).is_connected()) {
+      it.print(210, 0, id(wifi_icons), id(green), "\uef10");
+    } else {
+      it.print(210, 0, id(wifi_icons), id(red), "\uef13");
+    }
     it.line(5, 19, 230, 19, id(grey));
     it.print(5, 28, id(font1), id(orange), "Inputs 1-8");
     it.filled_rectangle(5, 47, 25, 25, id(i1).state ? id(purple) : id(grey));
@@ -464,10 +469,16 @@ display:
     it.filled_rectangle(34, 99, 25, 25, id(r2).state ? id(red) : id(grey));
     it.filled_rectangle(63, 99, 25, 25, id(r3).state ? id(red) : id(grey));
     it.filled_rectangle(92, 99, 25, 25, id(r4).state ? id(red) : id(grey));
-    it.rectangle(150, 99, 81, 25, id(blue));
-    it.print(175, 104, id(font1), id(wifi_1).is_connected() ? id(green) : id(grey), "WiFi");
+
 font:
-  file: "gfonts://Roboto"
-  id: font1
-  size: 15
+  - file: "gfonts://Roboto"
+    id: font1
+    size: 15
+  - file: "gfonts://Material+Symbols+Outlined"
+    id: wifi_icons
+    size: 18
+    glyphs: [
+      "\uef10", # wifi
+      "\uef13", # no wifi
+    ]  
   
