@@ -15,66 +15,26 @@ The example config requires wifi to be configured. Don't forget to set the timez
 
 ## Arduino Vs. ESP-IDF Compilation
 
-An alternative [config-esp-idf.yaml](config-esp-idf.yaml) is provided demonstrating how to compile the project using the esp-idf framework. Using the Arduino framework will result in faster compilation time but larger RAM and Flash size. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
+Using the Arduino framework will result in faster compilation time but larger RAM and Flash size. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
 
 Arduino:
 
 ```yaml
 esp32:
-  board: esp32-s3-devkitc-1
   flash_size: 8MB
   variant: ESP32S3
   framework:
     type: arduino
-
-esphome:
-  name: m5stamplc
-  friendly_name: 'M5Stack STAMPLC'
-  min_version: 2025.7.0
-  on_boot:
-    - priority: 1000
-      then:
-        - lambda: |-
-            pinMode(03, OUTPUT);
-            digitalWrite(03, HIGH);        
-    - priority: 0
-      then:
-       component.update: vdu
-
-i2c:
-  sda: GPIO13
-  scl: GPIO15
-  scan: true
 ```
 
 ESP-IDF:
 
 ```yaml
 esp32:
-  board: esp32-s3-devkitc-1
   flash_size: 8MB
   variant: ESP32S3
   framework:
     type: esp-idf
-
-esphome:
-  name: m5stamplc
-  friendly_name: 'M5Stack STAMPLC'
-  min_version: 2025.8.0
-  on_boot:
-    - priority: 1000
-      then:
-        - lambda: |-
-            gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
-            gpio_set_level(GPIO_NUM_3, 1);   
-    - priority: 0
-      then:
-       component.update: vdu
-
-i2c:
-  sda: GPIO13
-  scl: GPIO15
-  scan: false
 ```
 
 ## Home Assistant UI / Local Web Inteface (http://m5stamplc.local)
@@ -121,46 +81,41 @@ TODO: One single M5StamPLC component to abstract away some of the configuration 
 
 NB: The controller uses GPIO03 strapping pin as RESET. It needs to be pulled HIGH during boot for the GPIO Expander to initialise correctly:
 
-Arduino Framework:
+This can be achieved for both arduino and esp-idf frameworks using the power_supply component:
 
 ```yaml
-on_boot:
-  - priority: 1000
-      then:
-        - lambda: |-
-            pinMode(03, OUTPUT);
-            digitalWrite(03, HIGH);
+# <--- Keep this section in this order --->
+
+# Set pin 3 high on boot for aw9523 and
+# pi4ioe5v6408 to initialise correctly. 
+power_supply:
+  id: pin3_output_high
+  pin: 
+    number: 3
+    ignore_strapping_warning: true
+  enable_on_boot: true
+# Configuration of i2c GPIO Expander 1 
+pi4ioe5v6408:
+  - id: pi4ioe5v6408_1
+    address: 0x43
+# Configuration of i2c GPIO Expander 2
+aw9523:
+  - id: aw9523_1
+    address: 0x59
+
+# <--- End of ordered section --->
 ```
 
-ESP-IDF Framework:
-
-```yaml
-on_boot:
-  - priority: 1000
-      then:
-        - lambda: |-
-            gpio_set_direction(GPIO_NUM_3, GPIO_MODE_OUTPUT);
-            gpio_set_level(GPIO_NUM_3, 1);   
-```
-
-## Example Configuration YAML (Arduino Framework):
+## Example Configuration YAML:
 
 ```yaml
 esphome:
-  name:  m5stamplc
+  name: m5stamplc
   friendly_name: 'M5Stack STAMPLC'
   min_version: 2025.7.0
   on_boot:
     - then:
         rx8130.read_time:
-    - priority: 1000
-      then:
-        - lambda: |-
-            pinMode(03, OUTPUT);
-            digitalWrite(03, HIGH);
-    - priority: -100
-      then:
-       component.update: vdu
 
 # Import external components...
 external_components:
@@ -168,13 +123,12 @@ external_components:
     components: [aw9523, lm75b, rx8130]
 
 esp32:
-  board: esp32-s3-devkitc-1
   flash_size: 8MB
   variant: ESP32S3
   framework:
-    type: arduino
+    type: esp-idf
 
-# I found OTA updating failed unless safe_mode was disabled
+# Disable safe mode for OTA
 safe_mode:
   disabled: true
 
@@ -193,14 +147,12 @@ wifi:
   id: wifi_1
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  # Set up a wifi access point
-  ap: {}
   on_connect:
     then:
       - component.update: vdu
       - select.set:
           id: select_led_color
-          option: "Blue"
+          option: "Green"
   on_disconnect:
     then:
       - component.update: vdu
@@ -208,11 +160,7 @@ wifi:
           id: select_led_color
           option: "Red"      
 
-# In combination with the `ap` this allows the user
-# to provision wifi credentials to the device via WiFi AP.
-captive_portal:
-
-# To have a HA style local web page to manage the device
+# To have a HA style local web page for device monitoring
 web_server:
   port: 80
   version: 3
@@ -243,7 +191,7 @@ time:
 i2c:
   sda: GPIO13
   scl: GPIO15
-  scan: true
+  scan: false
 
 spi:
   clk_pin: GPIO7
@@ -252,22 +200,39 @@ spi:
 
 # RS485 pin config
 uart:
-  tx_pin: GPIO0
+  tx_pin:
+    number: GPIO0
+    ignore_strapping_warning: true
   rx_pin: GPIO39
   baud_rate: 9600
   parity: EVEN
 
+globals:
+  - id: double_beep
+    type: std::string
+    max_restore_data_length: 34
+    initial_value: '"two_short:d=4,o=5,b=100:16e6,16e6"'
+
+# <--- Keep this section in this order --->
+
+# Set pin 3 high on boot for aw9523 and
+# pi4ioe5v6408 to initialise correctly. 
+power_supply:
+  id: pin3_output_high
+  pin: 
+    number: 3
+    ignore_strapping_warning: true
+  enable_on_boot: true
 # Configuration of i2c GPIO Expander 1 
 pi4ioe5v6408:
   - id: pi4ioe5v6408_1
     address: 0x43
-
 # Configuration of i2c GPIO Expander 2
 aw9523:
   - id: aw9523_1
     address: 0x59
-    divider: 3
-    latch_inputs: true
+
+# <--- End of ordered section --->
 
 switch:
   # Relays 1-4
@@ -280,9 +245,7 @@ switch:
       number: 0
       mode:
         output: true
-    on_turn_on:
-      - component.update: vdu
-    on_turn_off:
+    on_state:
       - component.update: vdu
   - platform: gpio
     restore_mode: RESTORE_DEFAULT_OFF
@@ -293,9 +256,7 @@ switch:
       number: 1
       mode:
         output: true
-    on_turn_on:
-      - component.update: vdu
-    on_turn_off:
+    on_state:
       - component.update: vdu
   - platform: gpio
     restore_mode: RESTORE_DEFAULT_OFF
@@ -306,9 +267,7 @@ switch:
       number: 2
       mode:
         output: true
-    on_turn_on:
-      - component.update: vdu
-    on_turn_off:
+    on_state:
       - component.update: vdu
   - platform: gpio
     restore_mode: RESTORE_DEFAULT_OFF
@@ -319,9 +278,7 @@ switch:
       number: 3
       mode:
         output: true
-    on_turn_on:
-      - component.update: vdu
-    on_turn_off:
+    on_state:
       - component.update: vdu
   # LCD backlight (on/off only)
   - platform: gpio
@@ -333,7 +290,6 @@ switch:
       inverted: true
       mode:
         output: true
-        pulldown: true
   # led indicator 3-bit (8 colors only)
   - platform: gpio
     restore_mode: ALWAYS_ON
@@ -344,7 +300,6 @@ switch:
       inverted: true
       mode:
         output: true
-        pulldown: true
   - platform: gpio
     restore_mode: ALWAYS_OFF
     id: "led_green"
@@ -354,7 +309,6 @@ switch:
       inverted: true
       mode:
         output: true
-        pulldown: true
   - platform: gpio
     restore_mode: ALWAYS_OFF  
     id: "led_blue"
@@ -364,7 +318,6 @@ switch:
       inverted: true
       mode:
         output: true
-        pulldown: true        
 
 # Enable Web/HA UI to set 3-bit colors for LED Status
 select:
@@ -385,33 +338,18 @@ select:
       - White
     on_value: 
       then:
-        - lambda: "id(set_led)->execute(i);"
-
-script:
-  - id: set_led
-    parameters:
-      color_id: int
-    then:
-      lambda: |-
-        if ((color_id & 1) == 1) {
-          id(led_red).turn_on();
-        } else {
-          id(led_red).turn_off();
-        }
-        if ((color_id & 2) == 2) {
-          id(led_green).turn_on();
-        } else {
-          id(led_green).turn_off();
-        }
-        if ((color_id & 4) == 4) {
-          id(led_blue).turn_on();
-        } else {
-          id(led_blue).turn_off();
-        }
+        - switch.control:
+            id: led_red
+            state: !lambda return (i & 1);
+        - switch.control:
+            id: led_green
+            state: !lambda return (i & 2);
+        - switch.control:
+            id: led_blue
+            state: !lambda return (i & 4);
 
 output:
   # Set up the pwm buzzer on pin 44
-  # See https://esphome.io/components/rtttl.html
   - platform: ledc
     pin: GPIO44
     id: buzzer
@@ -521,7 +459,7 @@ binary_sensor:
         input: true
         pullup: true
     on_press:
-      - rtttl.play: "two_short:d=4,o=5,b=100:16e6,16e6"
+      - rtttl.play: !lambda return id(double_beep);
   - platform: gpio
     name: "Button B"
     pin:
@@ -532,7 +470,7 @@ binary_sensor:
         input: true
         pullup: true
     on_press:
-      - rtttl.play: "two_short:d=4,o=5,b=100:16e6,16e6"
+      - rtttl.play: !lambda return id(double_beep);
   - platform: gpio
     name: "Button C"
     pin:    
@@ -543,7 +481,7 @@ binary_sensor:
         input: true
         pullup: true
     on_press:
-      - rtttl.play: "two_short:d=4,o=5,b=100:16e6,16e6"
+      - rtttl.play: !lambda return id(double_beep);
 
 sensor:
   # INA226 Voltage/Current Sensor on i2c default Address 0x40
@@ -568,7 +506,7 @@ sensor:
     update_interval: 60s
     entity_category: "diagnostic"
 
-# Some colors for the LCD display
+# Some colors for the LED display
 color:
   - id: orange
     hex: fff099
@@ -635,5 +573,5 @@ font:
     glyphs: [
       "\uef10", # wifi
       "\uef13", # no wifi
-    ]  
+    ] 
 ```
