@@ -15,7 +15,7 @@ The example config requires wifi to be configured. Don't forget to set the timez
 
 ## Arduino Vs. ESP-IDF Compilation
 
-Using the Arduino framework will result in faster compilation time but larger RAM and Flash size. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses Arduino, config-esp-idf.yaml uses ESP-IDF.
+Using the Arduino framework will result in faster compilation time but larger RAM and Flash size. Using the ESP-IDF framework will result in slower compilation time but more efficient use of RAM and smaler Flash size. [Configuration.yaml](configuration.yaml) uses esp-idf.
 
 Arduino:
 
@@ -81,7 +81,7 @@ TODO: One single M5StamPLC component to abstract away some of the configuration 
 
 NB: The controller uses GPIO03 strapping pin as RESET. It needs to be pulled HIGH during boot for the GPIO Expander to initialise correctly:
 
-This can be achieved for both arduino and esp-idf frameworks using the power_supply component:
+This can be achieved for both arduino and esp-idf frameworks using the power_supply component. Ensure the power_supply component comes before the pi4ioe5v6408 and aw9523 components:
 
 ```yaml
 # <--- Keep this section in this order --->
