@@ -9,8 +9,10 @@ using namespace i2c;
 
 static const char *const TAG = "rx8130";
 
+constexpr uint8_t bcd2dec(uint8_t val) { return (val >> 4) * 10 + (val & 0x0f); }
+constexpr uint8_t dec2bcd(uint8_t val) { return ((val / 10) << 4) + (val % 10); }
+
 void RX8130Component::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up RX8130...");
   uint8_t clear_flags = 0x00;
   // Set digital offset to disabled with no offset
   if (this->write_register(RX8130_REG_DIG_OFFSET, &clear_flags, 1) != ERROR_OK) {
@@ -39,7 +41,7 @@ void RX8130Component::setup() {
     return;
   }
   // Clear STOP bit
-  this->stop(false);
+  this->stop_(false);
 }
 
 void RX8130Component::update() { this->read_time(); }
@@ -47,25 +49,24 @@ void RX8130Component::update() { this->read_time(); }
 void RX8130Component::dump_config() {
   ESP_LOGCONFIG(TAG, "RX8130:");
   LOG_I2C_DEVICE(this);
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "Communication with RX8130 failed!");
-    return;
-  }
-  ESP_LOGCONFIG(TAG, "  DOFFS  %s", format_bin((uint8_t) this->reg(RX8130_REG_DIG_OFFSET)).c_str());
-  ESP_LOGCONFIG(TAG, "  EXTEN  %s", format_bin((uint8_t) this->reg(RX8130_REG_EXTEN)).c_str());
-  ESP_LOGCONFIG(TAG, "  FLAGS  %s", format_bin((uint8_t) this->reg(RX8130_REG_FLAG)).c_str());
-  ESP_LOGCONFIG(TAG, "  CTRL0  %s", format_bin((uint8_t) this->reg(RX8130_REG_CTRL0)).c_str());
-  ESP_LOGCONFIG(TAG, "  CTRL1  %s", format_bin((uint8_t) this->reg(RX8130_REG_CTRL1)).c_str());
-  ESP_LOGCONFIG(TAG, "  Timezone: '%s'", this->timezone_.c_str());
+  ESP_LOGCONFIG(TAG,
+                "  DOFFS  %s\n"
+                "  EXTEN  %s\n"
+                "  FLAGS  %s\n"
+                "  CTRL0  %s\n"
+                "  CTRL1  %s\n"
+                "  Timezone: '%s'",
+                format_bin((uint8_t) this->reg(RX8130_REG_DIG_OFFSET)).c_str(),
+                format_bin((uint8_t) this->reg(RX8130_REG_EXTEN)).c_str(),
+                format_bin((uint8_t) this->reg(RX8130_REG_FLAG)).c_str(),
+                format_bin((uint8_t) this->reg(RX8130_REG_CTRL0)).c_str(),
+                format_bin((uint8_t) this->reg(RX8130_REG_CTRL1)).c_str(), this->timezone_.c_str());
 }
-
-float RX8130Component::get_setup_priority() const { return setup_priority::DATA; }
 
 void RX8130Component::read_time() {
   uint8_t date[7];
   if (this->read_register(RX8130_REG_SEC, date, 7) != ERROR_OK) {
-    ESP_LOGE(TAG, "Can't read I2C data.");
-    this->mark_failed();
+    this->status_set_warning(ESP_LOG_MSG_COMM_FAIL);
     return;
   }
   ESPTime rtc_time{
@@ -104,22 +105,17 @@ void RX8130Component::write_time() {
   buff[4] = dec2bcd(now.day_of_month);
   buff[5] = dec2bcd(now.month);
   buff[6] = dec2bcd(now.year % 100);
-  this->stop(true);
+  this->stop_(true);
   if (this->write_register(RX8130_REG_SEC, buff, 7) != ERROR_OK) {
-    ESP_LOGE(TAG, "Can't write I2C data.");
-    this->mark_failed();
+    this->status_set_warning(ESP_LOG_MSG_COMM_FAIL);
   } else {
     ESP_LOGD(TAG, "Wrote UTC time: %04d-%02d-%02d %02d:%02d:%02d", now.year, now.month, now.day_of_month, now.hour,
              now.minute, now.second);
   }
-  this->stop(false);
+  this->stop_(false);
 }
 
-uint8_t RX8130Component::bcd2dec(uint8_t val) { return (val >> 4) * 10 + (val & 0x0f); }
-
-uint8_t RX8130Component::dec2bcd(uint8_t val) { return ((val / 10) << 4) + (val % 10); }
-
-void RX8130Component::stop(bool stop) { this->reg(RX8130_REG_CTRL0) = stop ? RX8130_BIT_CTRL_STOP : 0x00; }
+void RX8130Component::stop_(bool stop) { this->reg(RX8130_REG_CTRL0) = stop ? RX8130_BIT_CTRL_STOP : 0x00; }
 
 }  // namespace rx8130
 }  // namespace esphome
