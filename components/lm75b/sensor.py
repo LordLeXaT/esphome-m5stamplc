@@ -1,16 +1,3 @@
-"""
-
-The LM75B is a temperature-to-digital converter using an on-chip band gap 
-temperature sensor and Sigma-Delta A-to-D conversion technique with an 
-overtemperature detection output. 
-
-The temperature register always stores an 11-bit twos complement data 
-giving a temperature resolution of 0.125 °C.
-
-https://www.nxp.com/docs/en/data-sheet/LM75B.pdf
-
-"""
-
 import esphome.codegen as cg
 from esphome.components import i2c, sensor
 import esphome.config_validation as cv
@@ -39,6 +26,7 @@ CONFIG_SCHEMA = (
     .extend(cv.polling_component_schema("60s"))
     .extend(i2c.i2c_device_schema(0x48))
 )
+
 
 async def to_code(config):
     var = await sensor.new_sensor(config)
