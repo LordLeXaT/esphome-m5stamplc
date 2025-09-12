@@ -77,6 +77,9 @@ void RX8130Component::read_time() {
   ESP_LOGD(TAG, "Read UTC time: %04d-%02d-%02d %02d:%02d:%02d", rtc_time.year, rtc_time.month, rtc_time.day_of_month,
            rtc_time.hour, rtc_time.minute, rtc_time.second);
   time::RealTimeClock::synchronize_epoch_(rtc_time.timestamp);
+  if (this->status_has_warning()) {
+    this->status_clear_warning();
+  }
 }
 
 void RX8130Component::write_time() {
@@ -99,6 +102,9 @@ void RX8130Component::write_time() {
   } else {
     ESP_LOGD(TAG, "Wrote UTC time: %04d-%02d-%02d %02d:%02d:%02d", now.year, now.month, now.day_of_month, now.hour,
              now.minute, now.second);
+    if (this->status_has_warning()) {
+      this->status_clear_warning();
+    }
   }
   this->stop_(false);
 }
