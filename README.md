@@ -522,7 +522,7 @@ color:
     hex: af69e3
 
 display:
-  platform: ili9xxx
+  platform: mipi_spi
   id: vdu
   model: ST7789V
   transform: 
@@ -531,9 +531,9 @@ display:
     mirror_y: False
   dimensions:
     width: 240
-    height: 135
-    offset_width: 40
-    offset_height: 52
+    height: 240
+    offset_width: 42
+    offset_height: 55
   dc_pin: GPIO06
   cs_pin: GPIO12
   invert_colors: true
